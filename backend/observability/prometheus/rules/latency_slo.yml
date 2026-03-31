@@ -1,0 +1,28 @@
+groups:
+  - name: app_latency_slo
+    rules:
+      - record: app:chat_stream_duration_p95_seconds
+        expr: histogram_quantile(0.95, sum(rate(app_chat_stream_duration_seconds_bucket[5m])) by (le, outcome))
+      - record: app:chat_stream_duration_p99_seconds
+        expr: histogram_quantile(0.99, sum(rate(app_chat_stream_duration_seconds_bucket[5m])) by (le, outcome))
+      - record: app:request_latency_p95_seconds
+        expr: histogram_quantile(0.95, sum(rate(app_request_latency_seconds_bucket[5m])) by (le, path, method, status_code))
+      - record: app:request_latency_p99_seconds
+        expr: histogram_quantile(0.99, sum(rate(app_request_latency_seconds_bucket[5m])) by (le, path, method, status_code))
+      - alert: AppChatStreamP95High
+        expr: app:chat_stream_duration_p95_seconds{outcome="completed"} > 2.0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 stream duration too high for /chat"
+          description: "P95 stream duration is above 2s for more than 10 minutes."
+      - alert: AppChatStreamP99High
+        expr: app:chat_stream_duration_p99_seconds{outcome="completed"} > 5.0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "P99 stream duration too high for /chat"
+          description: "P99 stream duration is above 5s for more than 10 minutes."
+

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "rule-based-verifier": {
+      "command": "bash",
+      "args": [
+        "mcp/scripts/run-docker-mcp.sh"
+      ],
+      "env": {
+        "RULE_BASED_DOCKER_IMAGE": "ghcr.io/kroq86/rule-based-verifier:latest"
+      }
+    }
+  }
+}

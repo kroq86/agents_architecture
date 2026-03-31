@@ -1,0 +1,36 @@
+groups:
+  - name: app_reliability
+    rules:
+      - alert: AppRetrySpike
+        expr: sum(rate(app_retry_total[5m])) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Retry rate spike detected"
+          description: "Retries are occurring more than expected."
+      - alert: AppErrorSpike
+        expr: sum(rate(app_error_total[5m])) > 0.2
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error rate spike detected"
+          description: "Error counter rate exceeded threshold."
+      - alert: AppHitlQueueBacklog
+        expr: app_hitl_queue_depth > 20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Human review queue backlog"
+          description: "Pending human review items exceed backlog threshold."
+      - alert: AppCoverageGapRateHigh
+        expr: sum(rate(app_quality_kpi_total{kpi="coverage_gap"}[15m])) > 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Coverage gap rate high"
+          description: "Coverage gaps are being produced at a high rate."
+
