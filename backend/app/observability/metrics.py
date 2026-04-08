@@ -1,9 +1,18 @@
 import re
 import time
 from collections.abc import Awaitable, Callable
+from os import getenv
 
 from fastapi import Request, Response
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    CollectorRegistry,
+    generate_latest,
+)
+from prometheus_client import multiprocess
 
 REQUEST_LATENCY_SECONDS = Histogram(
     "app_request_latency_seconds",
@@ -37,6 +46,24 @@ TOOL_CALLS_PER_RUN = Histogram(
     "Tool calls executed in a completed /chat run",
     ["outcome"],
     buckets=(0.0, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 21.0, float("inf")),
+)
+
+OUTBOX_EVENTS_PROCESSED = Counter(
+    "app_outbox_events_processed_total",
+    "Outbox rows processed successfully",
+    ["event_type"],
+)
+OUTBOX_EVENTS_DEAD = Counter(
+    "app_outbox_events_dead_total",
+    "Outbox rows moved to dead after max attempts",
+    ["event_type"],
+)
+# Seconds from outbox row creation (enqueue) until worker marks processed (orchestrator finished).
+OUTBOX_PIPELINE_SECONDS = Histogram(
+    "app_outbox_pipeline_seconds",
+    "Enqueue-to-completion latency for outbox-driven runs (worker path)",
+    ["event_type"],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, float("inf")),
 )
 
 # Defensive fallback when scope["route"] is missing (e.g. unusual ASGI stacks).
@@ -81,6 +108,11 @@ async def metrics_middleware(
 
 
 def metrics_response() -> Response:
+    multiproc_dir = getenv("PROMETHEUS_MULTIPROC_DIR", "").strip()
+    if multiproc_dir:
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)
+        return Response(content=generate_latest(registry), media_type=CONTENT_TYPE_LATEST)
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 

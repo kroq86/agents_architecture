@@ -27,6 +27,8 @@ class RunRepository:
         priority: str,
         deadline: str | None,
         attachments: list,
+        *,
+        status: str = "started",
     ) -> Run:
         run = Run(
             user_id=user_id,
@@ -39,7 +41,7 @@ class RunRepository:
             priority=priority,
             deadline=deadline,
             attachments=attachments,
-            status="started",
+            status=status,
         )
         self.session.add(run)
         await self.session.flush()
@@ -71,6 +73,12 @@ class RunRepository:
     async def complete_run(self, run: Run, final_text: str) -> None:
         run.status = "completed"
         run.final_text = final_text
+        run.finished_at = datetime.now(timezone.utc)
+        await self.session.flush()
+
+    async def fail_run(self, run: Run, error_text: str) -> None:
+        run.status = "failed"
+        run.final_text = error_text
         run.finished_at = datetime.now(timezone.utc)
         await self.session.flush()
 

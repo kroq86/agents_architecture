@@ -16,6 +16,7 @@ os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_TEST_DB}"
 os.environ["LLM_PROVIDER"] = "mock"
 os.environ.setdefault("OPENAI_API_KEY", "test")
 os.environ.setdefault("APP_ENV", "local")
+os.environ.setdefault("OTEL_TRACES_EXPORTER", "none")
 
 
 def pytest_configure(config: pytest.Config) -> None:

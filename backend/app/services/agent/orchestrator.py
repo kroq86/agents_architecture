@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.schemas import InternalRequest
+from app.models.run import Run
+from app.models.session_state import SessionState
 from app.observability.metrics import (
     ERROR_COUNT,
     ESCALATION_COUNT,
@@ -54,16 +56,17 @@ class AgentOrchestrator:
             return snippet
         return None
 
-    async def run(
+    async def _stream_agent_work(
         self,
         session: AsyncSession,
+        repo: RunRepository,
+        state_repo: SessionStateRepository,
+        run: Run,
+        state: SessionState,
         request: InternalRequest,
     ) -> AsyncGenerator[dict[str, str], None]:
         tool_calls_used = 0
         stream_outcome = "completed"
-        repo = RunRepository(session)
-        state_repo = SessionStateRepository(session)
-        user_id = request.input_payload.get("user_id")
         user_input = request.input_payload.get("message", "")
         drill = request.user_constraints.get("failure_drill")
         drill_flags = {"llm_once": False, "tool_once": False}
@@ -71,28 +74,6 @@ class AgentOrchestrator:
         tool_loop_exit: str | None = None
 
         try:
-            async with session.begin():
-                state = await state_repo.get_or_create(request.session_id)
-                run = await repo.create_run(
-                    user_id=user_id,
-                    input_text=user_input,
-                    request_id=request.request_id,
-                    session_id=request.session_id,
-                    trace_id=request.trace_id,
-                    task_type=request.task_type,
-                    user_constraints=request.user_constraints,
-                    priority=request.priority,
-                    deadline=request.deadline,
-                    attachments=request.attachments,
-                )
-                await repo.add_message(run.id, "user", user_input)
-                await repo.append_transcript_event(run.id, "user", {"text": user_input})
-                await state_repo.upsert_fact(
-                    state.id,
-                    key="last_user_input",
-                    value={"text": user_input, "request_id": request.request_id},
-                )
-
             prompt = self._prompt_env.get_template("chat.j2").render(
                 user_input=user_input,
                 tool_result=None,
@@ -452,3 +433,66 @@ class AgentOrchestrator:
             raise
         finally:
             TOOL_CALLS_PER_RUN.labels(outcome=stream_outcome).observe(float(tool_calls_used))
+
+    async def run(
+        self,
+        session: AsyncSession,
+        request: InternalRequest,
+    ) -> AsyncGenerator[dict[str, str], None]:
+        repo = RunRepository(session)
+        state_repo = SessionStateRepository(session)
+        user_id = request.input_payload.get("user_id")
+        user_input = request.input_payload.get("message", "")
+        async with session.begin():
+            state = await state_repo.get_or_create(request.session_id)
+            run = await repo.create_run(
+                user_id=user_id,
+                input_text=user_input,
+                request_id=request.request_id,
+                session_id=request.session_id,
+                trace_id=request.trace_id,
+                task_type=request.task_type,
+                user_constraints=request.user_constraints,
+                priority=request.priority,
+                deadline=request.deadline,
+                attachments=request.attachments,
+            )
+            await repo.add_message(run.id, "user", user_input)
+            await repo.append_transcript_event(run.id, "user", {"text": user_input})
+            await state_repo.upsert_fact(
+                state.id,
+                key="last_user_input",
+                value={"text": user_input, "request_id": request.request_id},
+            )
+
+        async for chunk in self._stream_agent_work(
+            session, repo, state_repo, run, state, request
+        ):
+            yield chunk
+
+    async def execute_existing_run(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AsyncGenerator[dict[str, str], None]:
+        repo = RunRepository(session)
+        state_repo = SessionStateRepository(session)
+        async with session.begin():
+            run = await repo.get_run(run_id)
+            if not run:
+                raise ValueError("run not found")
+            if run.status != "queued":
+                raise ValueError(f"run is not queued: {run.status}")
+            run.status = "started"
+            await session.flush()
+
+        await session.refresh(run)
+        request = InternalRequest.from_run(run)
+        state = await state_repo.get_or_create(run.session_id)
+        await session.commit()
+
+        async for chunk in self._stream_agent_work(
+            session, repo, state_repo, run, state, request
+        ):
+            yield chunk
+

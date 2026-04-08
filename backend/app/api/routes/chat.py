@@ -7,11 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_orchestrator, verify_api_key
 from app.core.config import get_settings
-from app.core.schemas import ChatRequest
+from app.core.schemas import ChatAsyncAccepted, ChatRequest
 from app.db.session import get_session
 from app.limiter import limiter
 from app.observability.metrics import CHAT_STREAM_DURATION_SECONDS
 from app.services.agent.orchestrator import AgentOrchestrator
+from app.services.chat_enqueue import enqueue_chat_run
 
 router = APIRouter()
 
@@ -46,4 +47,28 @@ async def chat(
             CHAT_STREAM_DURATION_SECONDS.labels(outcome=outcome).observe(time.perf_counter() - start)
 
     return EventSourceResponse(event_gen())
+
+
+@router.post(
+    "/chat/async",
+    status_code=202,
+    response_model=ChatAsyncAccepted,
+    summary="Enqueue chat run (transactional outbox; worker processes)",
+)
+@limiter.limit(_CHAT_RATE)
+async def chat_async(
+    request: Request,
+    payload: ChatRequest,
+    _: None = Depends(verify_api_key),
+    session: AsyncSession = Depends(get_session),
+) -> ChatAsyncAccepted:
+    internal_request = payload.to_internal_request()
+    run = await enqueue_chat_run(session, internal_request)
+    return ChatAsyncAccepted(
+        run_id=run.id,
+        request_id=run.request_id,
+        session_id=run.session_id,
+        trace_id=run.trace_id,
+        status="queued",
+    )
 

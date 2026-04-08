@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from uuid import uuid4
 
@@ -38,6 +40,33 @@ class InternalRequest(BaseModel):
     priority: str
     deadline: str | None = None
     attachments: list = Field(default_factory=list)
+
+    @classmethod
+    def from_run(cls, run: "Run") -> InternalRequest:
+        from app.models.run import Run as RunModel
+
+        assert isinstance(run, RunModel)
+        return cls(
+            request_id=run.request_id,
+            session_id=run.session_id,
+            trace_id=run.trace_id,
+            task_type=run.task_type,
+            input_payload={"message": run.input_text, "user_id": run.user_id},
+            user_constraints=dict(run.user_constraints) if run.user_constraints else {},
+            priority=run.priority,
+            deadline=run.deadline,
+            attachments=list(run.attachments) if run.attachments else [],
+        )
+
+
+class ChatAsyncAccepted(BaseModel):
+    """Response for POST /chat/async (202 Accepted)."""
+
+    run_id: str
+    request_id: str
+    session_id: str
+    trace_id: str
+    status: str = "queued"
 
 
 class ToolCallRead(BaseModel):

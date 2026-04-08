@@ -10,6 +10,10 @@ from app.core.config import Settings
 
 
 def configure_tracing(app: FastAPI, settings: Settings) -> None:
+    if settings.otel_traces_exporter == "none":
+        # Tests can disable span exporting to avoid shutdown-time writes to closed stderr/stdout.
+        return
+
     resource = Resource.create({"service.name": settings.otel_service_name})
     provider = TracerProvider(resource=resource)
 

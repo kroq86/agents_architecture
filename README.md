@@ -105,6 +105,17 @@ pip install -e ".[dev]"
 PYTHONPATH=. pytest -q
 ```
 
+End-to-end subset (sync `/chat`, `doc.md` tool path, async outbox + worker):
+
+```bash
+cd backend
+PYTHONPATH=. pytest -q -m e2e
+```
+
+## Async chat (transactional outbox)
+
+`POST /chat` still streams SSE in-process. For enqueue + worker processing, use **`POST /chat/async`** (202 + `run_id`) and run **`python -m app.worker`** in a second shell with the same `DATABASE_URL`. Details: [`docs/outbox.md`](docs/outbox.md).
+
 ## Run (Gunicorn first)
 
 ```bash
@@ -178,8 +189,10 @@ Run this guard to fail fast unless the system actually uses `doc.md` through the
 
 ```bash
 source .venv/bin/activate
-python3 scripts/e2e_doc_guard.py
+python3 backend/scripts/e2e_doc_guard.py
 ```
+
+(Requires API already running on `127.0.0.1:8000`. In CI, prefer `pytest -m e2e` in `backend/` instead.)
 
 ## Metrics and Reliability
 

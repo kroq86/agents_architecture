@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     # Optional shared secret; unset = no API-key check (local dev). Not enterprise SSO.
     api_key: str | None = Field(default=None, alias="API_KEY")
 
+    # Outbox worker (separate process from API).
+    worker_id: str = Field(default="local-worker", alias="WORKER_ID")
+    outbox_lease_seconds: int = Field(default=30, ge=5, alias="OUTBOX_LEASE_SECONDS")
+    worker_poll_seconds: float = Field(default=1.0, ge=0.1, alias="WORKER_POLL_SECONDS")
+    outbox_retry_backoff_seconds: int = Field(default=5, ge=1, alias="OUTBOX_RETRY_BACKOFF_SECONDS")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

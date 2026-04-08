@@ -34,4 +34,9 @@ class Run(Base, UUIDMixin, TimestampMixin):
         back_populates="run",
         cascade="all, delete-orphan",
     )
+    outbox_events = relationship(
+        "OutboxEvent",
+        back_populates="run",
+        cascade="all, delete-orphan",
+    )
 

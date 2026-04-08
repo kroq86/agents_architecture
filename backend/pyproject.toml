@@ -28,6 +28,9 @@ dependencies = [
   "asyncpg>=0.30.0",
 ]
 
+[project.scripts]
+agent-worker = "app.worker.main:main"
+
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
@@ -50,5 +53,6 @@ markers = [
   "unit: fast isolated tests",
   "integration: app + DB fixtures",
   "bdd: Gherkin-driven scenarios",
+  "e2e: full ASGI+DB paths (sync /chat, doc tool, async outbox+worker)",
 ]
 

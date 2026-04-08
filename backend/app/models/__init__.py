@@ -1,4 +1,5 @@
 from app.models.message import Message
+from app.models.outbox_event import OutboxEvent
 from app.models.quality import CoverageGap, Finding, HumanReviewItem, Provenance
 from app.models.run import Run
 from app.models.transcript import RunTranscriptEvent
@@ -9,6 +10,7 @@ from app.models.user import User
 __all__ = [
     "User",
     "Run",
+    "OutboxEvent",
     "Message",
     "ToolCall",
     "SessionState",
