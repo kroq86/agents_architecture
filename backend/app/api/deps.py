@@ -1,5 +1,7 @@
 from functools import lru_cache
 
+from fastapi import HTTPException, Request
+
 from app.core.config import get_settings
 from app.services.agent.orchestrator import AgentOrchestrator
 from app.services.tool_gateway import ToolGateway
@@ -30,4 +32,18 @@ def get_tool_gateway() -> ToolGateway:
 
 def get_orchestrator() -> AgentOrchestrator:
     return AgentOrchestrator(llm=get_llm_client(), tool_gateway=get_tool_gateway())
+
+
+async def verify_api_key(request: Request) -> None:
+    """Optional shared-secret gate. No-op when `API_KEY` is unset."""
+    settings = get_settings()
+    expected = settings.api_key
+    if not expected:
+        return
+    auth = request.headers.get("Authorization") or ""
+    if auth.startswith("Bearer ") and auth[7:].strip() == expected:
+        return
+    if request.headers.get("X-API-Key") == expected:
+        return
+    raise HTTPException(status_code=401, detail="Invalid or missing API key")
 

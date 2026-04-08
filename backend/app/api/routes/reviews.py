@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import verify_api_key
 from app.core.schemas import HumanReviewItemRead, ReviewResolveRequest
 from app.db.session import get_session
 from app.observability.metrics import HITL_QUEUE_DEPTH
@@ -16,6 +17,7 @@ async def list_reviews(
         description="Filter by status; use 'all' to include every status.",
     ),
     limit: int = Query(default=100, ge=1, le=500),
+    _: None = Depends(verify_api_key),
     session: AsyncSession = Depends(get_session),
 ) -> list[HumanReviewItemRead]:
     repo = RunRepository(session)
@@ -28,6 +30,7 @@ async def list_reviews(
 async def resolve_review(
     item_id: str,
     body: ReviewResolveRequest,
+    _: None = Depends(verify_api_key),
     session: AsyncSession = Depends(get_session),
 ) -> HumanReviewItemRead:
     repo = RunRepository(session)

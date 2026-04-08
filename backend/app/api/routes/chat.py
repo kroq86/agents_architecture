@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_orchestrator
+from app.api.deps import get_orchestrator, verify_api_key
 from app.core.config import get_settings
 from app.core.schemas import ChatRequest
 from app.db.session import get_session
@@ -24,6 +24,7 @@ _CHAT_RATE = _settings.chat_rate_limit if _settings.rate_limit_enabled else "100
 async def chat(
     request: Request,
     payload: ChatRequest,
+    _: None = Depends(verify_api_key),
     session: AsyncSession = Depends(get_session),
     orchestrator: AgentOrchestrator = Depends(get_orchestrator),
 ) -> EventSourceResponse:

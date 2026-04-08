@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = Field(default=False, alias="RATE_LIMIT_ENABLED")
     chat_rate_limit: str = Field(default="120/minute", alias="CHAT_RATE_LIMIT")
 
+    # Browser clients: comma-separated origins; empty = CORS middleware not installed.
+    cors_origins: str = Field(default="", alias="CORS_ORIGINS")
+    # Optional shared secret; unset = no API-key check (local dev). Not enterprise SSO.
+    api_key: str | None = Field(default=None, alias="API_KEY")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -53,6 +58,11 @@ class Settings(BaseSettings):
         except json.JSONDecodeError:
             pass
         return {}
+
+    def cors_origins_list(self) -> list[str]:
+        if not self.cors_origins.strip():
+            return []
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
 @lru_cache(maxsize=1)

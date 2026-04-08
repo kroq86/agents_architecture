@@ -71,3 +71,6 @@ doc.md
 
 # MCP / verifier generated solution graph (regenerate locally)
 solution_trace.html
+
+# pytest SQLite (backend/tests)
+backend/tests/test.db

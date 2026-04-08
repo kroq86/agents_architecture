@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import verify_api_key
 from app.core.schemas import MessageRead, RunRead, ToolCallRead, TranscriptEventRead
 from app.db.session import get_session
 from app.services.repositories.runs import RunRepository
@@ -9,7 +10,11 @@ router = APIRouter()
 
 
 @router.get("/runs/{run_id}", response_model=RunRead)
-async def get_run(run_id: str, session: AsyncSession = Depends(get_session)) -> RunRead:
+async def get_run(
+    run_id: str,
+    _: None = Depends(verify_api_key),
+    session: AsyncSession = Depends(get_session),
+) -> RunRead:
     repo = RunRepository(session)
     run = await repo.get_run(run_id)
     if not run:

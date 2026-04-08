@@ -77,6 +77,11 @@ Core variables:
 - `OPENAI_MODEL_PRICES_JSON` (per-model token pricing map)
 - `RATE_LIMIT_ENABLED` (default `false` for local; set `true` when exposing the API)
 - `CHAT_RATE_LIMIT` (default `120/minute`; SlowAPI string, e.g. `60/minute`)
+- `CORS_ORIGINS` — comma-separated browser origins; **empty** = no CORS middleware (safest default)
+- `API_KEY` — optional; when set, `POST /chat`, `GET /runs/{id}`, `GET/PATCH /reviews` require `X-API-Key: <key>` or `Authorization: Bearer <key>` (`/healthz`, `/readyz`, `/metrics` stay open)
+- `APP_ENV` — set `production` to hide internal error text on HTTP 500 responses
+
+API errors use a stable JSON body: `{"detail": ..., "code": ...}` (`code` is `validation_error` for 422, `internal_error` for unhandled 500 in non-production).
 
 ## Install
 
@@ -90,6 +95,14 @@ pip install -e .
 
 ```bash
 alembic upgrade head
+```
+
+## Tests
+
+```bash
+cd backend
+pip install -e ".[dev]"
+PYTHONPATH=. pytest -q
 ```
 
 ## Run (Gunicorn first)
