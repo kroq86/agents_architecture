@@ -81,6 +81,17 @@ export BASE_URL=http://127.0.0.1:8000
 ./scripts/e2e_outbox_curl.sh
 ```
 
+## Deep Debug UI
+
+A separate frontend debug UI is available at `frontend/` (Vite + React). It reads
+`/chat`, `/chat/async`, `/runs/{run_id}`, and `/metrics` and renders:
+
+- chat timeline (SSE/polling/both)
+- run inspector (messages, tool calls, transcript)
+- request path metrics tables
+- outbox counters and SLA (avg/p95)
+- raw metrics explorer with filter
+
 ## Deferred (not implemented)
 
 Live **SSE** or **Redis pub/sub** for token streaming on async runs is out of scope for this iteration; clients poll `GET /runs/{id}` for status and messages.

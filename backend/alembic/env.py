@@ -19,6 +19,7 @@ from app.models import (  # noqa: F401
 config = context.config
 settings = get_settings()
 sync_url = settings.database_url.replace("+aiosqlite", "")
+sync_url = sync_url.replace("+asyncpg", "")
 config.set_main_option("sqlalchemy.url", sync_url)
 
 if config.config_file_name is not None:

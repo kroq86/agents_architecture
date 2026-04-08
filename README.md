@@ -112,9 +112,37 @@ cd backend
 PYTHONPATH=. pytest -q -m e2e
 ```
 
+## Deep Debug Chat UI
+
+Separate frontend app lives in `frontend/` and provides deep-debug panels for chat timeline, run inspector, request path metrics, outbox SLA/counters, and raw `/metrics`.
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
+```
+
 ## Async chat (transactional outbox)
 
 `POST /chat` still streams SSE in-process. For enqueue + worker processing, use **`POST /chat/async`** (202 + `run_id`) and run **`python -m app.worker`** in a second shell with the same `DATABASE_URL`. Details: [`docs/outbox.md`](docs/outbox.md).
+
+## Run all with Docker Compose (API + worker + frontend + Postgres)
+
+```bash
+docker compose -f docker-compose.debug.yml up --build
+```
+
+Then open:
+- Debug UI: `http://127.0.0.1:5173`
+- API health: `http://127.0.0.1:8000/healthz`
+- API metrics: `http://127.0.0.1:8000/metrics`
+
+Stop and remove state:
+
+```bash
+docker compose -f docker-compose.debug.yml down -v
+```
 
 ## Run (Gunicorn first)
 

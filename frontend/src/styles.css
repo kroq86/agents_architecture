@@ -1,0 +1,9 @@
+body { font-family: Inter, Arial, sans-serif; margin: 0; background: #0b1020; color: #e6e8ef; }
+.container { padding: 16px; display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+.panel { border: 1px solid #2c3455; border-radius: 8px; padding: 12px; background: #121933; }
+input, select, textarea, button { background: #0f1530; color: #e6e8ef; border: 1px solid #2c3455; border-radius: 6px; padding: 6px 8px; }
+button { cursor: pointer; }
+pre { white-space: pre-wrap; word-break: break-word; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.timeline { max-height: 220px; overflow: auto; }
+.small { font-size: 12px; color: #98a2c8; }

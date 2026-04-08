@@ -1,0 +1,86 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: agent
+      POSTGRES_PASSWORD: agent
+      POSTGRES_DB: agent
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent -d agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: local
+      LLM_PROVIDER: mock
+      OTEL_TRACES_EXPORTER: none
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prom
+      CORS_ORIGINS: http://127.0.0.1:5173,http://localhost:5173
+      DATABASE_URL: postgresql+asyncpg://agent:agent@postgres:5432/agent
+    command: >
+      sh -c "mkdir -p /tmp/prom &&
+      chmod 0777 /tmp/prom &&
+      rm -f /tmp/prom/* &&
+      alembic upgrade head &&
+      gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 --chdir ."
+    user: "0:0"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - prom_multiproc:/tmp/prom
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    environment:
+      APP_ENV: local
+      LLM_PROVIDER: mock
+      OTEL_TRACES_EXPORTER: none
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prom
+      DATABASE_URL: postgresql+asyncpg://agent:agent@postgres:5432/agent
+    command: >
+      sh -c "mkdir -p /tmp/prom &&
+      chmod 0777 /tmp/prom &&
+      python -m app.worker"
+    user: "0:0"
+    volumes:
+      - prom_multiproc:/tmp/prom
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      VITE_API_BASE_URL: http://127.0.0.1:8000
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata:
+  prom_multiproc:
